@@ -23,21 +23,21 @@ def main():
         sys.exit(1)
 
     input_file, output_file = argv[0], argv[1]
-
     try:
         # ✅ Ensure the add-on is enabled
         enable_addon()
 
         # ✅ Clear the scene before importing
         bpy.ops.wm.read_factory_settings(use_empty=True)
-
+        # bpy.ops.import_scene.sketchup(filepath=input_file)
+        bpy.ops.wm.obj_import(filepath=input_file)
         # ✅ Import SKP file
-        if hasattr(bpy.ops.import_scene, "skp"):
-            bpy.ops.import_scene.skp(filepath=input_file)
-        elif hasattr(bpy.ops.import_scene, "sketchup"):
-            bpy.ops.import_scene.sketchup(filepath=input_file)
-        else:
-            raise Exception("❌ SketchUp import operator not found!")
+        # if hasattr(bpy.ops.import_scene, "skp"):
+        #     bpy.ops.import_scene.skp(filepath=input_file)
+        # elif hasattr(bpy.ops.import_scene, "sketchup"):
+        #     bpy.ops.import_scene.sketchup(filepath=input_file)
+        # else:
+        #     raise Exception("❌ SketchUp import operator not found!")
 
         # ✅ Ensure the scene has objects (check import success)
         if not bpy.data.objects:
