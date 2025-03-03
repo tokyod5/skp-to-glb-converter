@@ -1,50 +1,81 @@
 import subprocess
 import sys
 import os
+import logging
 
-def convert_skp_to_glb(input_path, output_path):
-    """
-    Converts an SKP file to GLB using Blender.
-    """
+logging.basicConfig(level=logging.INFO)
 
-    # Ensure directories exist
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+BLENDER_PATH = r"C:\Program Files\Blender Foundation\Blender 4.3\blender.exe"
+SCRIPT_PATH = os.path.abspath("convert_script.py")
 
-    # Construct Blender command
-    blender_path = r"C:\Program Files\Blender Foundation\Blender 4.3\blender.exe"  # Update if needed
-    script_path = os.path.abspath("convert_script.py")  # This will handle the conversion inside Blender
-    
-    command = [
-        blender_path,
+def check_blender_addons():
+    """Check if Blender has the required add-ons in background mode"""
+    check_command = [
+        BLENDER_PATH,
         "--background",
-        "--python", script_path,
-        "--", input_path, output_path  # Passing arguments to the Blender script
+        "--python-expr",
+        "import bpy; print(bpy.context.preferences.addons.keys())"
     ]
 
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
-        print("Blender Output:", result.stdout)
-        print("Blender Error:", result.stderr)
-
-        if result.returncode == 0:
-            return True, output_path
+        result = subprocess.run(check_command, capture_output=True, text=True, encoding='utf-8', errors='replace')
+        if "sketchup_importer" in result.stdout:
+            logging.info("✅ SketchUp Importer add-on is available in background mode.")
+            return True
         else:
-            return False, f"Blender failed: {result.stderr}"
-    
-    except subprocess.CalledProcessError as e:
-        return False, f"Conversion error: {e.stderr}"
+            logging.error("❌ SketchUp Importer add-on NOT available in background mode.")
+            return False
+    except Exception as e:
+        logging.error(f"Error checking Blender add-ons: {str(e)}")
+        return False
 
-# If run directly from terminal
+def convert_skp_to_glb(input_path, output_path):
+    """Convert an SKP file to GLB using Blender with error handling."""
+    try:
+        # ✅ Check if the add-on is available in background mode
+        if not check_blender_addons():
+            return False, "SketchUp Importer Add-on is missing in Blender background mode."
+
+        command = [
+            BLENDER_PATH,
+            "--background",
+            "--python", SCRIPT_PATH,
+            "--", input_path, output_path
+        ]
+
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace'
+        )
+
+        # Debug logs
+        logging.info(f"✅ Blender stdout: {result.stdout}")
+        if result.stderr:
+            logging.error(f"❌ Blender stderr: {result.stderr}")
+
+        return True, output_path
+
+    except subprocess.CalledProcessError as e:
+        error_msg = f"❌ Blender Error (Code {e.returncode}): {e.stderr}"
+        logging.error(error_msg)
+        return False, error_msg
+        
+    except Exception as e:
+        error_msg = f"❌ Conversion System Error: {str(e)}"
+        logging.error(error_msg)
+        return False, error_msg
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) != 3:
         print("Usage: python convert.py <input_file> <output_file>")
         sys.exit(1)
-    
-    input_file = os.path.abspath(sys.argv[1])
-    output_file = os.path.abspath(sys.argv[2])
 
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    
     success, message = convert_skp_to_glb(input_file, output_file)
-    if success:
-        print(f"Conversion successful: {output_file}")
-    else:
-        print(f"Error: {message}")
+    sys.exit(0 if success else 1)
