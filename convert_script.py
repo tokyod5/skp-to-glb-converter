@@ -1,16 +1,21 @@
 import bpy
 import sys
 import traceback
+import addon_utils
 
 def enable_addon():
     """Ensure the SketchUp Importer add-on is enabled."""
-    addon_name = "sketchup_importer"  # Confirmed correct name
-    if addon_name not in bpy.context.preferences.addons:
+    addon_name = "sketchup_importer"
+    # Check if addon is enabled
+    loaded_default, loaded_state = addon_utils.check(addon_name)
+    if not loaded_state:
         print(f"⚠️ Enabling {addon_name} add-on...")
-        bpy.ops.preferences.addon_enable(module=addon_name)
-        bpy.ops.wm.save_userpref()
+        addon_utils.enable(addon_name, default_set=True, persistent=True)
+        bpy.ops.wm.save_userpref()  # Save preferences
 
-    if addon_name not in bpy.context.preferences.addons:
+    # Verify
+    loaded_default, loaded_state = addon_utils.check(addon_name)
+    if not loaded_state:
         raise Exception(f"❌ SketchUp Importer add-on could not be enabled.")
 
 def main():
@@ -24,22 +29,21 @@ def main():
 
     input_file, output_file = argv[0], argv[1]
     try:
-        # ✅ Ensure the add-on is enabled
-        enable_addon()
-
         # ✅ Clear the scene before importing
         bpy.ops.wm.read_factory_settings(use_empty=True)
-        # bpy.ops.import_scene.sketchup(filepath=input_file)
-        bpy.ops.wm.obj_import(filepath=input_file)
-        # ✅ Import SKP file
-        # if hasattr(bpy.ops.import_scene, "skp"):
-        #     bpy.ops.import_scene.skp(filepath=input_file)
-        # elif hasattr(bpy.ops.import_scene, "sketchup"):
-        #     bpy.ops.import_scene.sketchup(filepath=input_file)
-        # else:
-        #     raise Exception("❌ SketchUp import operator not found!")
+        
+        # ✅ Ensure the add-on is enabled after reset
+        enable_addon()
 
-        # ✅ Ensure the scene has objects (check import success)
+        # ✅ Import SKP file using the correct operator
+        if hasattr(bpy.ops.import_scene, "skp"):
+            bpy.ops.import_scene.skp(filepath=input_file)
+        elif hasattr(bpy.ops.import_scene, "sketchup"):
+            bpy.ops.import_scene.sketchup(filepath=input_file)
+        else:
+            raise Exception("❌ SketchUp import operator not found!")
+
+        # ✅ Check if import succeeded
         if not bpy.data.objects:
             raise Exception("❌ Imported scene is empty. Import failed.")
 

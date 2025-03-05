@@ -5,7 +5,7 @@ import subprocess
 import traceback
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:8888", "https://127.0.0.1:5000"])
 
 UPLOAD_FOLDER = "uploads"
 CONVERTED_FOLDER = "converted"
@@ -72,4 +72,4 @@ def download_file(filename):
     return send_from_directory(CONVERTED_FOLDER, filename, as_attachment=True)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, ssl_context=("cert.pem", "key.pem"))

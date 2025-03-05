@@ -14,27 +14,25 @@ def check_blender_addons():
         BLENDER_PATH,
         "--background",
         "--python-expr",
-        "import bpy; print(bpy.context.preferences.addons.keys())"
+        "import addon_utils; print(addon_utils.check('sketchup_importer'))"
     ]
-
     try:
         result = subprocess.run(check_command, capture_output=True, text=True, encoding='utf-8', errors='replace')
-        if "sketchup_importer" in result.stdout:
-            logging.info("✅ SketchUp Importer add-on is available in background mode.")
+        if "True" in result.stdout:
+            logging.info("✅ SketchUp Importer add-on is available.")
             return True
         else:
-            logging.error("❌ SketchUp Importer add-on NOT available in background mode.")
+            logging.error("❌ SketchUp Importer add-on NOT available.")
             return False
     except Exception as e:
-        logging.error(f"Error checking Blender add-ons: {str(e)}")
+        logging.error(f"Error checking addons: {str(e)}")
         return False
 
 def convert_skp_to_glb(input_path, output_path):
-    """Convert an SKP file to GLB using Blender with error handling."""
+    """Convert SKP to GLB using Blender"""
     try:
-        # ✅ Check if the add-on is available in background mode
         if not check_blender_addons():
-            return False, "SketchUp Importer Add-on is missing in Blender background mode."
+            return False, "Addon missing in Blender."
 
         command = [
             BLENDER_PATH,
@@ -45,27 +43,28 @@ def convert_skp_to_glb(input_path, output_path):
 
         result = subprocess.run(
             command,
-            check=True,
             capture_output=True,
             text=True,
             encoding='utf-8',
             errors='replace'
         )
 
-        # Debug logs
-        logging.info(f"✅ Blender stdout: {result.stdout}")
+        # Log output for debugging
+        logging.info(f"Blender stdout: {result.stdout}")
         if result.stderr:
-            logging.error(f"❌ Blender stderr: {result.stderr}")
+            logging.error(f"Blender stderr: {result.stderr}")
+
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, command, output=result.stdout, stderr=result.stderr)
 
         return True, output_path
 
     except subprocess.CalledProcessError as e:
-        error_msg = f"❌ Blender Error (Code {e.returncode}): {e.stderr}"
+        error_msg = f"Blender Error (Code {e.returncode}): {e.stderr}"
         logging.error(error_msg)
         return False, error_msg
-        
     except Exception as e:
-        error_msg = f"❌ Conversion System Error: {str(e)}"
+        error_msg = f"System Error: {str(e)}"
         logging.error(error_msg)
         return False, error_msg
 
@@ -74,8 +73,5 @@ if __name__ == "__main__":
         print("Usage: python convert.py <input_file> <output_file>")
         sys.exit(1)
 
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
-    
-    success, message = convert_skp_to_glb(input_file, output_file)
+    success, message = convert_skp_to_glb(sys.argv[1], sys.argv[2])
     sys.exit(0 if success else 1)
